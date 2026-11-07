@@ -103,6 +103,15 @@ label{font-weight:700}
 .tag{border-radius:999px;padding:.1em .6em;font-size:12px;font-weight:800;background:var(--felt-3)}
 .tag.win{background:var(--gold);color:var(--ink)} .tag.warn{background:var(--red);color:#fff}
 
+/* --- altavoz --- */
+#speaker{max-width:560px;margin:0 auto;display:grid;gap:14px;text-align:center}
+#speaker header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;text-align:left}
+#speaker header .wordmark{font-size:22px}
+#spkBig{font-family:var(--display);font-size:clamp(80px,30vw,160px);line-height:1;color:var(--gold)}
+#spkText{font-size:20px;min-height:1.5em}
+#spkOn{font-size:22px;padding:1em}
+.notice{background:var(--blue);color:#fff;border-radius:16px;padding:12px 16px;font-weight:700;font-size:15px}
+
 /* --- móvil --- */
 #player{max-width:560px;margin:0 auto;display:grid;gap:14px}
 #player header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -143,8 +152,9 @@ label{font-weight:700}
 <section id="tv" hidden>
   <header>
     <div class="wordmark"><span class="a">BINGO</span> <span class="b">DE LOS</span> <span class="c">TORRES PERALVO</span></div>
-    <div class="row"><span class="muted">Sala <b id="roomCodeTop" style="color:#fff;letter-spacing:.1em"></b></span><span id="netPill" class="pill off">Conectando…</span></div>
+    <div class="row"><span class="muted">Sala <b id="roomCodeTop" style="color:#fff;letter-spacing:.1em"></b></span><span id="spkPill" class="pill" hidden>🔊 0</span><span id="netPill" class="pill off">Conectando…</span></div>
   </header>
+  <div id="voiceNotice" class="notice" hidden>🔇 Esta pantalla no tiene voz (no se ha podido cargar voces.mp3 ni hay voz del navegador). Para que se canten los números, escanea el QR con un móvil y pulsa «Usar este móvil como altavoz», o envía la pestaña de Chrome desde el PC a la TV.</div>
   <div id="tvBanner"></div>
   <div class="stage">
     <div style="display:grid;gap:14px;min-width:0">
@@ -217,6 +227,24 @@ label{font-weight:700}
     </div>
     <p style="text-align:center"><button id="btnRename" class="linkish">Cambiar nombre</button></p>
   </div>
+  <p style="text-align:center"><a id="goSpeaker" class="linkish" style="color:var(--muted)" href="#">🔊 ¿La TV no tiene voz? Usar este móvil como altavoz</a></p>
+</section>
+
+<!-- ================= ALTAVOZ ================= -->
+<section id="speaker" hidden>
+  <header>
+    <div class="wordmark"><span class="a">BINGO</span> <span class="b">DE LOS</span> <span class="c">TORRES PERALVO</span></div>
+    <span id="sConn" class="pill off">Conectando…</span>
+  </header>
+  <div class="panel" style="display:grid;gap:14px">
+    <h2 style="font-size:24px">🔊 Modo altavoz</h2>
+    <p class="muted">Este móvil cantará los números de la partida con su propia voz. Déjalo cerca de la TV, con el volumen alto y la pantalla encendida.</p>
+    <button id="spkOn">🔊 Activar altavoz</button>
+    <div id="spkBig">—</div>
+    <div id="spkText" class="muted">Esperando a la TV…</div>
+    <p class="muted" style="font-size:13px" id="spkVoice"></p>
+  </div>
+  <p><a class="linkish" style="color:var(--muted)" id="spkBack" href="#">Prefiero jugar con cartón en este móvil</a></p>
 </section>
 
 </main>
@@ -234,7 +262,7 @@ const store = {
 function randCode(len){ const a = new Uint32Array(len); crypto.getRandomValues(a); return [...a].map(x => CODE_CHARS[x % CODE_CHARS.length]).join(""); }
 function shuffle(arr){ const a = arr.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 function esc(s){ const d = document.createElement("div"); d.textContent = String(s ?? ""); return d.innerHTML; }
-function show(id){ for(const s of ["landing","tv","player"]) $("#"+s).hidden = (s !== id); }
+function show(id){ for(const s of ["landing","tv","player","speaker"]) $("#"+s).hidden = (s !== id); }
 const baseUrl = () => location.origin + location.pathname;
 const ORDINAL = ["", "Primera", "Segunda", "Tercera"];
 /* Frases típicas del bingo español */
@@ -278,6 +306,38 @@ const Voice = {
   }
 };
 
+/* ---------- voces pregrabadas (voces.mp3: un solo fichero con todos los clips; funciona en navegadores sin síntesis de voz, p. ej. TV Bro) ---------- */
+const CLIPS = {"n1":[0.0,1.38],"n2":[1.73,0.7],"n3":[2.78,1.31],"n4":[4.44,0.74],"n5":[5.53,1.04],"n6":[6.92,0.9],"n7":[8.16,0.9],"n8":[9.41,0.58],"n9":[10.34,0.69],"n10":[11.37,0.64],"n11":[12.36,0.75],"n12":[13.47,0.88],"n13":[14.7,0.75],"n14":[15.8,0.93],"n15":[17.08,1.68],"n16":[19.11,1.04],"n17":[20.5,1.09],"n18":[21.93,0.94],"n19":[23.23,0.93],"n20":[24.51,1.06],"n21":[25.91,0.94],"n22":[27.21,2.0],"n23":[29.56,1.02],"n24":[30.93,1.07],"n25":[32.35,1.01],"n26":[33.71,1.09],"n27":[35.15,1.01],"n28":[36.51,1.01],"n29":[37.86,0.96],"n30":[39.17,0.8],"n31":[40.32,1.23],"n32":[41.91,1.22],"n33":[43.47,2.21],"n34":[46.03,1.1],"n35":[47.48,1.22],"n36":[49.05,1.2],"n37":[50.6,1.28],"n38":[52.23,1.04],"n39":[53.62,1.1],"n40":[55.07,0.83],"n41":[56.26,1.02],"n42":[57.63,1.12],"n43":[59.1,1.15],"n44":[60.6,2.35],"n45":[63.3,1.15],"n46":[64.81,1.38],"n47":[66.53,1.23],"n48":[68.11,1.44],"n49":[69.9,1.12],"n50":[71.37,1.06],"n51":[72.78,1.3],"n52":[74.43,1.28],"n53":[76.06,1.23],"n54":[77.64,1.3],"n55":[79.28,1.22],"n56":[80.85,1.46],"n57":[82.66,1.18],"n58":[84.19,1.26],"n59":[85.8,1.22],"n60":[87.37,0.88],"n61":[88.6,1.28],"n62":[90.23,1.17],"n63":[91.75,1.42],"n64":[93.52,1.18],"n65":[95.06,1.22],"n66":[96.62,1.34],"n67":[98.32,1.3],"n68":[99.96,1.17],"n69":[101.48,1.33],"n70":[103.16,0.91],"n71":[104.42,1.12],"n72":[105.89,1.2],"n73":[107.44,1.17],"n74":[108.96,1.26],"n75":[110.57,1.31],"n76":[112.23,1.28],"n77":[113.86,2.27],"n78":[116.49,1.3],"n79":[118.13,1.12],"n80":[119.6,1.06],"n81":[121.01,1.15],"n82":[122.51,1.1],"n83":[123.96,1.15],"n84":[125.47,1.15],"n85":[126.97,1.09],"n86":[128.41,1.2],"n87":[129.96,1.18],"n88":[131.49,0.91],"n89":[132.75,1.15],"n90":[134.25,1.65],"comenzamos":[136.25,2.21],"nueva":[138.81,3.02],"linea_ok":[142.18,3.01],"linea_no":[145.54,2.98],"linea_ya":[148.87,1.54],"bingo_ok":[150.75,2.93],"bingo_fin":[154.03,2.42],"bingo_no":[156.8,3.28],"bingo_ya":[160.43,1.6],"fin90":[162.38,2.91],"prueba":[165.64,3.15]};
+const Clips = {
+  ok: null, audio: null, stopTimer: null, playing: false,
+  init(){
+    if(this.audio) return;
+    const a = this.audio = new Audio(); a.preload = "auto";
+    a.addEventListener("loadeddata", () => { if(this.ok === null) this.ok = true; }, { once: true });
+    a.addEventListener("error", () => { this.ok = false; });
+    // Se descarga entero como blob: así se puede saltar a cualquier clip al instante, sin depender de que el servidor soporte rangos
+    fetch("voces.mp3", { cache: "force-cache" }).then(r => { if(!r.ok) throw new Error(r.status); return r.blob(); })
+      .then(b => { a.src = URL.createObjectURL(b); a.load(); })
+      .catch(() => { this.ok = false; });
+  },
+  unlock(){ const a = this.audio; if(!a || this.playing) return; try{ a.muted = true; const p = a.play(); const done = () => { if(!this.playing) a.pause(); a.muted = false; }; if(p && p.then) p.then(done).catch(done); else done(); }catch(e){} },
+  play(key, cb){
+    const a = this.audio, c = CLIPS[key];
+    if(!a || this.ok === false || !c) return false;
+    let done = false; const fin = () => { if(done) return; done = true; this.playing = false; a.removeEventListener("timeupdate", tick); clearTimeout(this.stopTimer); if(cb) cb(); };
+    const end = c[0] + c[1];
+    const tick = () => { if(a.currentTime >= end - 0.05){ a.pause(); fin(); } };
+    try{
+      this.playing = true; a.pause(); a.muted = false; a.currentTime = c[0];
+      a.addEventListener("timeupdate", tick);
+      const p = a.play(); if(p && p.catch) p.catch(() => { this.ok = false; fin(); });
+      clearTimeout(this.stopTimer); this.stopTimer = setTimeout(() => { a.pause(); fin(); }, (c[1] + 0.6) * 1000);
+      return true;
+    }catch(e){ this.ok = false; return false; }
+  },
+  stop(){ try{ this.audio && this.audio.pause(); }catch(e){} }
+};
+
 /* ---------- cartón español: 3 filas × 9 columnas, 15 números ---------- */
 function makeCard(){
   for(let tries = 0; tries < 50; tries++){
@@ -298,7 +358,8 @@ function makeCard(){
 
 /* ================= Arranque ================= */
 const params = new URLSearchParams(location.search);
-if(params.get("sala")) startPlayer(params.get("sala").toUpperCase());
+if(params.get("sala") && params.has("altavoz")) startSpeaker(params.get("sala").toUpperCase());
+else if(params.get("sala")) startPlayer(params.get("sala").toUpperCase());
 else if(params.has("tv")) startTv();
 else show("landing");
 $("#goTv").onclick = () => { history.replaceState(null, "", baseUrl() + "?tv"); startTv(); };
@@ -310,7 +371,7 @@ $("#joinForm").onsubmit = e => { e.preventDefault(); const c = $("#joinCode").va
    ===================================================== */
 function startTv(){
   show("tv");
-  Voice.init();
+  Voice.init(); Clips.init();
   const saved = store.get("btp_tv1", null) || {};
   const T = {
     room: saved.room || randCode(5),
@@ -325,8 +386,16 @@ function startTv(){
   };
   const save = () => store.set("btp_tv1", { room:T.room, gen:T.gen, order:T.order, cur:T.cur, started:T.started, finished:T.finished,
     winners:T.winners, players:T.players, maxLines:T.maxLines, maxBingos:T.maxBingos, rhythm:T.rhythm, voice:T.voice });
-  const conns = {};
+  const conns = {}, speakers = {};          // jugadores / móviles altavoz
   let peer = null, timer = null, hold = 0;
+  function sayRemote(text){ for(const id in speakers){ const c = speakers[id]; if(c && c.open){ try{ c.send({ t:"say", text }); }catch(e){} } } }
+  function say(text, cb, rate, key){
+    sayRemote(text);
+    if(!Voice.on){ setTimeout(() => cb && cb(), 500); return; }
+    if(key && Clips.play(key, cb)) return;           // 1º voces pregrabadas (sirven en cualquier navegador)
+    Voice.speak(text, cb, rate);                     // 2º síntesis de voz del navegador
+  }
+  function renderSpeakers(){ const n = Object.keys(speakers).length, p = $("#spkPill"); p.hidden = !n; p.textContent = `🔊 ${n} altavoz${n === 1 ? "" : "es"}`; }
 
   const called = () => T.order.slice(0, T.cur + 1);
   const calledSet = () => new Set(called());
@@ -357,6 +426,11 @@ function startTv(){
 
   function onData(conn, d){
     if(!d || typeof d !== "object") return;
+    if(d.t === "hello" && d.role === "speaker" && typeof d.id === "string" && d.id.length < 40){
+      conn._sid = d.id; speakers[d.id] = conn; renderSpeakers();
+      try{ conn.send({ t:"say", text: T.started && !T.finished && T.cur >= 0 ? `Altavoz conectado. El último número es el ${T.order[T.cur]}.` : "Altavoz conectado." }); }catch(e){}
+      banner("Un móvil se ha conectado como altavoz 🔊", "info"); return;
+    }
     if(d.t === "hello" && typeof d.id === "string" && d.id.length < 40){
       const id = d.id, name = String(d.name || "Jugador").trim().slice(0,18) || "Jugador";
       conn._pid = id;
@@ -382,7 +456,10 @@ function startTv(){
     peer.on("open", () => setNet("Sala abierta", true));
     peer.on("connection", conn => {
       conn.on("data", d => onData(conn, d));
-      conn.on("close", () => { if(conn._pid && conns[conn._pid] === conn){ delete conns[conn._pid]; renderPlayers(); } });
+      conn.on("close", () => {
+        if(conn._pid && conns[conn._pid] === conn){ delete conns[conn._pid]; renderPlayers(); }
+        if(conn._sid && speakers[conn._sid] === conn){ delete speakers[conn._sid]; renderSpeakers(); }
+      });
       conn.on("error", () => {});
     });
     peer.on("disconnected", () => { setNet("Reconectando…", false); setTimeout(() => { try{ peer.reconnect(); }catch(e){} }, 1500); });
@@ -402,26 +479,26 @@ function startTv(){
   }
 
   /* ---------- cantar números ---------- */
-  function announce(text, cb){ hold++; Voice.speak(text, () => { hold--; if(cb) cb(); schedule(); }); }
+  function announce(text, key, cb){ hold++; say(text, () => { hold--; if(cb) cb(); schedule(); }, undefined, key); }
   function schedule(){ clearTimeout(timer); if(!T.running || T.finished || hold > 0) return; timer = setTimeout(callNext, T.rhythm * 1000); }
   function callNext(){
     clearTimeout(timer);
     if(T.finished) return;
-    if(T.cur + 1 >= T.order.length){ finish("Se han cantado los 90 números y nadie ha hecho bingo."); return; }
+    if(T.cur + 1 >= T.order.length){ finish("Se han cantado los 90 números y nadie ha hecho bingo."); say("Se han cantado los noventa números y nadie ha hecho bingo.", null, undefined, "fin90"); return; }
     T.cur++; save();
     const n = T.order[T.cur];
     renderNow(true); broadcast(); pop();
-    Voice.speak(`El ${n}${SAY[n] ? ". " + SAY[n] : ""}`, () => schedule());
+    say(`El ${n}${SAY[n] ? ". " + SAY[n] : ""}`, () => schedule(), undefined, "n" + n);
   }
   function begin(){
     if(T.started) return;
     T.started = true; T.running = true; save(); renderNow(); broadcast();
-    announce("¡Comenzamos! Mucha suerte a todos.");
+    announce("¡Comenzamos! Mucha suerte a todos.", "comenzamos");
   }
   function pauseToggle(){
     if(T.finished) return;
     T.running = !T.running;
-    if(T.running){ speechSynthesis && speechSynthesis.cancel && speechSynthesis.cancel(); schedule(); } else clearTimeout(timer);
+    if(T.running){ if("speechSynthesis" in window) speechSynthesis.cancel(); schedule(); } else { clearTimeout(timer); Clips.stop(); }
     renderNow();
   }
   function finish(reason){
@@ -436,7 +513,7 @@ function startTv(){
     for(const id in T.players) dealCard(T.players[id]);
     save(); renderNow(); renderPlayers(); broadcast();
     banner("Cartones nuevos repartidos. Cuando todos los tengan, pulsa «Comenzar».", "info");
-    Voice.speak("Nueva partida. Mirad vuestros cartones nuevos.");
+    say("Nueva partida. Mirad vuestros cartones nuevos.", null, undefined, "nueva");
   }
 
   /* ---------- jueces ---------- */
@@ -445,24 +522,24 @@ function startTv(){
     const ev = evalCard(p), w = T.winners;
     clearTimeout(timer);                                   // damos un respiro mientras se comprueba
     if(type === "line"){
-      if(w.lines.some(x => x.id === id)){ banner(`${p.name} ya tiene línea en esta partida.`, "small"); announce(`${p.name}, ya tienes línea.`); }
-      else if(w.lines.length >= T.maxLines){ banner(`${p.name} canta línea, pero ya se ${T.maxLines === 1 ? "cantó la línea" : "cantaron todas las líneas"}.`, "small"); announce("La línea ya está cantada."); }
+      if(w.lines.some(x => x.id === id)){ banner(`${p.name} ya tiene línea en esta partida.`, "small"); announce(`${p.name}, ya tienes línea.`, "linea_ya"); }
+      else if(w.lines.length >= T.maxLines){ banner(`${p.name} canta línea, pero ya se ${T.maxLines === 1 ? "cantó la línea" : "cantaron todas las líneas"}.`, "small"); announce("La línea ya está cantada.", "linea_ya"); }
       else if(ev.line){
         w.lines.push({ id, name: p.name }); save(); fanfare();
         const k = w.lines.length, label = T.maxLines > 1 ? `${ORDINAL[k]} línea` : "Línea";
         banner(`¡${label.toUpperCase()} para ${p.name}!`);
-        announce(`¡${label} para ${p.name}! Comprobada y correcta. Seguimos.`);
-      } else { banner(`${p.name} ha cantado línea… ¡pero no vale todavía!`, "small"); announce(`${p.name} ha cantado línea, pero no es correcta. Seguimos.`); }
+        announce(`¡${label} para ${p.name}! Comprobada y correcta. Seguimos.`, "linea_ok");
+      } else { banner(`${p.name} ha cantado línea… ¡pero no vale todavía!`, "small"); announce(`${p.name} ha cantado línea, pero no es correcta. Seguimos.`, "linea_no"); }
     } else {
-      if(w.bingos.some(x => x.id === id)){ banner(`${p.name} ya tiene bingo en esta partida.`, "small"); announce(`${p.name}, ya tienes bingo.`); }
-      else if(w.bingos.length >= T.maxBingos){ banner(`El bingo ya está cantado.`, "small"); announce("El bingo ya está cantado."); }
+      if(w.bingos.some(x => x.id === id)){ banner(`${p.name} ya tiene bingo en esta partida.`, "small"); announce(`${p.name}, ya tienes bingo.`, "bingo_ya"); }
+      else if(w.bingos.length >= T.maxBingos){ banner(`El bingo ya está cantado.`, "small"); announce("El bingo ya está cantado.", "bingo_ya"); }
       else if(ev.bingo){
         w.bingos.push({ id, name: p.name }); save(); fanfare(); setTimeout(fanfare, 700);
         const k = w.bingos.length, last = k >= T.maxBingos, label = T.maxBingos > 1 ? `${ORDINAL[k]} bingo` : "Bingo";
         banner(`🏆 ¡${label.toUpperCase()}! ¡${p.name} gana${last ? " la partida" : ""}!`);
-        if(last){ finish(); announce(`¡Bingo! ¡${p.name} gana la partida! Enhorabuena.`); }
-        else announce(`¡${label} para ${p.name}! Comprobado y correcto. Seguimos.`);
-      } else { banner(`${p.name} ha cantado bingo… ¡pero le falta${ev.missing === 1 ? "" : "n"} ${ev.missing} número${ev.missing === 1 ? "" : "s"}!`, "small"); announce(`${p.name} ha cantado bingo, pero le faltan números. Seguimos.`); }
+        if(last){ finish(); announce(`¡Bingo! ¡${p.name} gana la partida! Enhorabuena.`, "bingo_fin"); }
+        else announce(`¡${label} para ${p.name}! Comprobado y correcto. Seguimos.`, "bingo_ok");
+      } else { banner(`${p.name} ha cantado bingo… ¡pero le falta${ev.missing === 1 ? "" : "n"} ${ev.missing} número${ev.missing === 1 ? "" : "s"}!`, "small"); announce(`${p.name} ha cantado bingo, pero le faltan números. Seguimos.`, "bingo_no"); }
     }
     renderNow(); renderPlayers(); broadcast();
   }
@@ -527,7 +604,7 @@ function startTv(){
   };
 
   /* ---------- controles ---------- */
-  $("#btnStart").onclick = () => { ctx(); begin(); };
+  $("#btnStart").onclick = () => { ctx(); Clips.unlock(); begin(); };
   $("#btnPause").onclick = pauseToggle;
   $("#btnNext").onclick = () => { if(hold > 0) return; callNext(); };
   $("#btnNew").onclick = newGame;
@@ -535,8 +612,10 @@ function startTv(){
   $("#optLines").onchange = e => { T.maxLines = +e.target.value; save(); broadcast(); };
   $("#optBingos").onchange = e => { T.maxBingos = +e.target.value; save(); broadcast(); };
   $("#optRhythm").onchange = e => { T.rhythm = +e.target.value; save(); if(T.running) schedule(); };
-  $("#optVoice").onchange = e => { T.voice = Voice.on = e.target.checked; save(); if(!Voice.on && "speechSynthesis" in window) speechSynthesis.cancel(); };
-  $("#btnTestVoice").onclick = () => { const was = Voice.on; Voice.on = true; Voice.speak("Bingo de los Torres Peralvo. El 15, la niña bonita.", () => { Voice.on = was; }); };
+  $("#optVoice").onchange = e => { T.voice = Voice.on = e.target.checked; save(); if(!Voice.on){ Clips.stop(); if("speechSynthesis" in window) speechSynthesis.cancel(); } };
+  $("#btnTestVoice").onclick = () => { const was = Voice.on; Voice.on = true; Clips.unlock(); say("Bingo de los Torres Peralvo. El 15, la niña bonita.", () => { Voice.on = was; }, undefined, "prueba"); };
+  setTimeout(() => { if(!Voice.voice && Clips.ok === false) $("#voiceNotice").hidden = false; }, 5000);   // aviso solo si no hay ni clips ni voz del navegador
+  setInterval(() => { const i = $("#voiceInfo"); if(Clips.ok) i.textContent = "Voz pregrabada (voces.mp3)" + (Voice.voice ? " · navegador: " + Voice.voice.name : ""); }, 2000);
   document.addEventListener("keydown", e => {
     if(e.target.matches("input,select,textarea")) return;
     if(e.key === " "){ e.preventDefault(); if(!T.started) begin(); else pauseToggle(); }
@@ -645,8 +724,58 @@ function startPlayer(room){
   };
   $("#btnRename").onclick = () => { $("#nameInput").value = P.name || ""; P.name = ""; save(); render(); };
 
+  $("#goSpeaker").onclick = e => { e.preventDefault(); location.href = baseUrl() + "?sala=" + room + "&altavoz"; };
+
   if(P.name) $("#nameInput").value = P.name;
   render(); connect();
+}
+
+/* =====================================================
+   ALTAVOZ: un móvil que canta lo que le manda la TV
+   ===================================================== */
+function startSpeaker(room){
+  show("speaker");
+  Voice.init();
+  const id = "spk-" + randCode(10);
+  let peer = null, conn = null, retry = null, active = false, wake = null;
+  const queue = [];
+  function setConn(text, ok){ const p = $("#sConn"); p.textContent = text; p.className = "pill " + (ok ? "on" : "off"); }
+  function sayNext(){
+    if(!active || !queue.length) return;
+    const text = queue.shift();
+    $("#spkText").textContent = text;
+    const m = text.match(/^El (\d{1,2})\b/); if(m) $("#spkBig").textContent = m[1];
+    Voice.speak(text, sayNext, 0.95);
+  }
+  function enqueue(text){ queue.push(text); if(queue.length === 1) sayNext(); else if(queue.length > 3) queue.splice(0, queue.length - 3); }
+  function connect(){
+    clearTimeout(retry);
+    if(!peer || peer.destroyed){
+      peer = new Peer({ debug: 0 });
+      peer.on("open", openConn);
+      peer.on("disconnected", () => { setTimeout(() => { try{ peer.reconnect(); }catch(e){} }, 1500); });
+      peer.on("error", err => { setConn(err.type === "peer-unavailable" ? "No encuentro la TV" : "Sin conexión", false); scheduleRetry(); });
+    } else if(peer.open) openConn();
+  }
+  function openConn(){
+    setConn("Buscando la TV…", false);
+    if(conn){ try{ conn.close(); }catch(e){} }
+    conn = peer.connect(PEER_PREFIX + room, { reliable: true });
+    conn.on("open", () => { setConn("Conectado a la TV", true); conn.send({ t:"hello", id, role:"speaker" }); });
+    conn.on("data", d => { if(d && d.t === "say" && typeof d.text === "string") enqueue(d.text.slice(0, 200)); });
+    conn.on("close", () => { setConn("Reconectando…", false); scheduleRetry(); });
+    conn.on("error", () => scheduleRetry());
+  }
+  function scheduleRetry(){ clearTimeout(retry); retry = setTimeout(() => { if(!conn || !conn.open) connect(); }, 3000); }
+  document.addEventListener("visibilitychange", () => { if(!document.hidden){ if(!conn || !conn.open) connect(); if(active) requestWake(); } });
+  async function requestWake(){ try{ if("wakeLock" in navigator) wake = await navigator.wakeLock.request("screen"); }catch(e){} }
+  $("#spkOn").onclick = () => {
+    active = true; Voice.on = true; $("#spkOn").textContent = "✅ Altavoz activado"; $("#spkOn").disabled = true;
+    Voice.speak("Altavoz activado. Bingo de los Torres Peralvo.", () => { $("#spkVoice").textContent = Voice.voice ? `Voz: ${Voice.voice.name}` : "Usando la voz del sistema"; sayNext(); });
+    requestWake();
+  };
+  $("#spkBack").onclick = e => { e.preventDefault(); location.href = baseUrl() + "?sala=" + room; };
+  connect();
 }
 </script>
 </body>

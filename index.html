@@ -505,9 +505,15 @@ function startTv(){
     T.finished = true; T.running = false; clearTimeout(timer); save(); renderNow(); broadcast();
     if(reason) banner(reason, "info");
   }
+  let confirmNew = null;
   function newGame(){
-    if(T.started && !T.finished && !confirm("La partida está en marcha. ¿Empezar una nueva y repartir cartones nuevos?")) return;
-    clearTimeout(timer); T.running = false;
+    // Sin confirm() del navegador: en las TV no se muestra. Con la partida en marcha hay que pulsar dos veces.
+    if(T.started && !T.finished && !confirmNew){
+      confirmNew = setTimeout(() => { confirmNew = null; renderNow(); }, 6000);
+      $("#btnNew").textContent = "⚠️ ¿Seguro? Pulsa otra vez"; return;
+    }
+    clearTimeout(confirmNew); confirmNew = null;
+    clearTimeout(timer); T.running = false; Clips.stop();
     T.gen = randCode(4); T.order = shuffle(Array.from({length:90}, (_,i) => i + 1)); T.cur = -1;
     T.started = false; T.finished = false; T.winners = { lines: [], bingos: [] };
     for(const id in T.players) dealCard(T.players[id]);
@@ -573,7 +579,7 @@ function startTv(){
     $("#btnPause").hidden = !T.started || T.finished; $("#btnPause").textContent = T.running ? "⏸ Pausa" : "▶ Continuar";
     $("#btnNext").hidden = !T.started || T.finished;
     $("#btnNew").hidden = !T.started;
-    $("#btnNew").textContent = T.finished ? "🔄 Nueva partida" : "🔄 Reiniciar partida";
+    if(!confirmNew) $("#btnNew").textContent = T.finished ? "🔄 Nueva partida" : "🔄 Reiniciar partida";
     $("#optLines").disabled = $("#optBingos").disabled = T.started && !T.finished;
   }
   function renderPlayers(){
@@ -594,9 +600,13 @@ function startTv(){
     }).join("");
     $("#btnStart").disabled = false;
   }
+  let kickArm = null;
   $("#players").onclick = e => {
     const id = e.target.getAttribute && e.target.getAttribute("data-kick");
-    if(id && T.players[id] && confirm(`¿Expulsar a ${T.players[id].name}?`)){
+    if(!id || !T.players[id]) return;
+    if(kickArm !== id){ kickArm = id; e.target.textContent = "¿Expulsar?"; setTimeout(() => { if(kickArm === id){ kickArm = null; renderPlayers(); } }, 5000); return; }
+    kickArm = null;
+    {
       try{ conns[id] && conns[id].close(); }catch(e){} delete conns[id]; delete T.players[id];
       T.winners.lines = T.winners.lines.filter(x => x.id !== id); T.winners.bingos = T.winners.bingos.filter(x => x.id !== id);
       save(); renderPlayers(); renderNow();
